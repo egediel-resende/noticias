@@ -1,19 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Bell,
-  Search,
-  Activity,
-  AlertTriangle,
-  PlayCircle,
-  Trophy,
-  Filter,
-  CheckCircle2,
-  X,
-  Volume2
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
@@ -34,20 +22,212 @@ interface NewsItem {
 }
 
 const TEAMS: Team[] = [
-  "Flamengo", "Palmeiras", // BR
-  "Manchester City", "Arsenal", "Liverpool", // EN
-  "Barcelona", "Real Madrid", // ES
-  "Inter de Milão", // IT
-  "Bayern de Munique" // DE
+  "Flamengo", "Palmeiras",
+  "Manchester City", "Arsenal", "Liverpool",
+  "Barcelona", "Real Madrid",
+  "Inter de Milão",
+  "Bayern de Munique"
 ];
+
+const IMPACT_LABELS: Record<ImpactType, string> = {
+  lesao: "LESÃO",
+  escalacao: "ESCALAÇÃO",
+  retorno: "RETORNO",
+  poupados: "POUPADOS",
+};
+
+function WinTitleBar({ icon, title, onClose }: { icon?: string; title: string; onClose?: () => void }) {
+  return (
+    <div className="win-titlebar select-none" style={{ borderBottom: "1px solid #000040" }}>
+      {icon && <img src={icon} alt="" width={14} height={14} style={{ imageRendering: "pixelated" }} />}
+      <span className="flex-1 font-bold" style={{ fontFamily: "Arial", fontSize: 11 }}>{title}</span>
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="win-btn"
+          style={{ padding: "0 4px", fontSize: 10, fontWeight: "bold", minWidth: 16, height: 16, lineHeight: "12px" }}
+          aria-label="Fechar"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+function WinButton({
+  children,
+  onClick,
+  active,
+  className = "",
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  active?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`win-btn ${active ? "win-btn-active" : ""} ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ImpactTag({ type }: { type: ImpactType }) {
+  const cls =
+    type === "lesao" ? "win-tag-injury" :
+    type === "retorno" ? "win-tag-return" :
+    type === "escalacao" ? "win-tag-lineup" :
+    "win-tag-rested";
+  return <span className={cls}>{IMPACT_LABELS[type]}</span>;
+}
+
+function NewsCard({ item }: { item: NewsItem }) {
+  const borderColor =
+    item.impact_type === "lesao" ? "#cc0000" :
+    item.impact_type === "retorno" ? "#006600" :
+    item.impact_type === "escalacao" ? "#000080" : "#996600";
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      layout
+      className="glass-panel"
+      style={{ borderLeft: `3px solid ${borderColor}`, marginBottom: 6 }}
+    >
+      {/* Card top bar */}
+      <div
+        style={{
+          background: "#ece9d8",
+          borderBottom: "1px solid #aca899",
+          padding: "3px 6px",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <ImpactTag type={item.impact_type} />
+          <span style={{ fontSize: 10, color: "#444", background: "#d4d0c8", border: "1px solid #aca899", padding: "0 4px" }}>
+            {item.team}
+          </span>
+        </div>
+        <time style={{ fontSize: 10, color: "#666" }}>
+          {format(new Date(item.created_at), "HH:mm • dd/MM/yyyy", { locale: ptBR })}
+        </time>
+      </div>
+
+      {/* Card body */}
+      <div style={{ padding: "6px 8px" }}>
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="win-link"
+          style={{ fontSize: 12, fontWeight: "bold", display: "block", marginBottom: 4 }}
+        >
+          {item.title}
+        </a>
+        <p style={{ fontSize: 11, color: "#333", lineHeight: 1.4, marginBottom: 6 }}>
+          {item.description}
+        </p>
+
+        {/* Footer */}
+        <div
+          style={{
+            borderTop: "1px solid #aca899",
+            paddingTop: 4,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span style={{ fontSize: 10, color: "#555" }}>
+            📰 Fonte:{" "}
+            <strong style={{ color: "#000080" }}>{item.source}</strong>
+          </span>
+          {item.key_player && item.key_player !== "N/A" && (
+            <span
+              style={{
+                fontSize: 10,
+                background: "#ffffe1",
+                border: "1px solid #aca899",
+                padding: "1px 5px",
+                color: "#000",
+              }}
+            >
+              ⚽ Atleta-Chave: <strong>{item.key_player}</strong>
+            </span>
+          )}
+        </div>
+      </div>
+    </motion.article>
+  );
+}
+
+function ToastNotification({ toast, onClose }: { toast: NewsItem; onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 60 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 60 }}
+      style={{
+        width: 320,
+        background: "#d4d0c8",
+        borderTop: "2px solid #fff",
+        borderLeft: "2px solid #fff",
+        borderBottom: "2px solid #808080",
+        borderRight: "2px solid #808080",
+        boxShadow: "3px 3px 6px rgba(0,0,0,0.5)",
+        overflow: "hidden",
+      }}
+    >
+      <WinTitleBar title="⚡ Nova Notícia - TacticalInsight" onClose={onClose} />
+      <div style={{ padding: "8px 10px" }}>
+        <div style={{ fontSize: 10, color: "#444", marginBottom: 4 }}>
+          <ImpactTag type={toast.impact_type} />
+          <span style={{ marginLeft: 4 }}>{toast.team}</span>
+        </div>
+        <p style={{ fontSize: 11, fontWeight: "bold", color: "#000", lineHeight: 1.4 }}>
+          {toast.title}
+        </p>
+      </div>
+      <motion.div
+        initial={{ width: "100%" }}
+        animate={{ width: "0%" }}
+        transition={{ duration: 6, ease: "linear" }}
+        style={{
+          height: 3,
+          background:
+            toast.impact_type === "lesao" ? "#cc0000" :
+            toast.impact_type === "retorno" ? "#006600" :
+            toast.impact_type === "escalacao" ? "#000080" : "#996600",
+        }}
+      />
+    </motion.div>
+  );
+}
 
 export default function Home() {
   const [activeTeam, setActiveTeam] = useState<Team | "Todos">("Todos");
   const [news, setNews] = useState<NewsItem[]>([]);
   const [toasts, setToasts] = useState<NewsItem[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Sistema de Som
+  // Clock
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Sound
   const playAlertSound = () => {
     if (!soundEnabled) return;
     try {
@@ -55,271 +235,457 @@ export default function Home() {
       const audioCtx = new AudioContext();
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
-      
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-      oscillator.type = "sine"; 
-      
-      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); 
-      oscillator.frequency.exponentialRampToValueAtTime(880.00, audioCtx.currentTime + 0.1);
-
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(880.0, audioCtx.currentTime + 0.1);
       gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
       gainNode.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
       gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-
       oscillator.start(audioCtx.currentTime);
       oscillator.stop(audioCtx.currentTime + 0.5);
-    } catch (e) {
-      console.warn("Web Audio API not supported");
-    }
+    } catch (e) {}
   };
 
   useEffect(() => {
-    // 1. Carregar as notícias iniciais do banco
     const fetchNews = async () => {
       const { data, error } = await supabase
-        .from('news')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .from("news")
+        .select("*")
+        .order("created_at", { ascending: false })
         .limit(50);
-
-      if (data && !error) {
-        setNews(data);
-      }
+      if (data && !error) setNews(data);
     };
     fetchNews();
 
-    // 2. Inscrever-se para atualizações Realtime do Supabase (A grande mágica)
-    const channel = supabase.channel('realtime_news')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'news' }, (payload) => {
-        const nova_noticia = payload.new as NewsItem;
-        
-        // Atualizar os estados para mostrar na UI
-        setNews(prev => [nova_noticia, ...prev]);
-        setToasts(prev => [...prev, nova_noticia]);
-        
-        // Tocar o alarme
+    const channel = supabase.channel("realtime_news")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "news" }, (payload) => {
+        const nova = payload.new as NewsItem;
+        setNews((prev) => [nova, ...prev]);
+        setToasts((prev) => [...prev, nova]);
         playAlertSound();
-
-        // Ocultar notificação após 6s
-        setTimeout(() => {
-          setToasts(prev => prev.filter(t => t.id !== nova_noticia.id));
-        }, 6000);
+        setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== nova.id)), 6000);
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [soundEnabled]);
 
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
-
-  const filteredNews = activeTeam === "Todos" ? news : news.filter(n => n.team === activeTeam);
+  const removeToast = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));
+  const filteredNews = activeTeam === "Todos" ? news : news.filter((n) => n.team === activeTeam);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-blue-500/30">
-      
-      <header className="sticky top-0 z-40 glass-panel border-b border-white/10 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600/20 p-2 rounded-xl border border-blue-500/30">
-            <Activity className="w-6 h-6 text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              Tactical<span className="text-blue-500 font-light">Insight</span>
-            </h1>
-            <p className="text-xs text-slate-400 font-medium">Radar Realtime I.A.</p>
-          </div>
-        </div>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#008080",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: 11,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* ── Taskbar ── */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          background: "#d4d0c8",
+          borderTop: "2px solid #ffffff",
+          height: 30,
+          display: "flex",
+          alignItems: "center",
+          paddingLeft: 4,
+          paddingRight: 8,
+          gap: 4,
+        }}
+      >
+        {/* Start button */}
+        <button
+          className="win-btn"
+          style={{
+            fontWeight: "bold",
+            fontSize: 11,
+            padding: "2px 8px",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span style={{ fontSize: 14 }}>⊞</span> Iniciar
+        </button>
 
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`p-2 rounded-lg border transition-colors ${soundEnabled ? 'bg-slate-800 border-slate-700 text-blue-400' : 'bg-slate-800/50 border-slate-800 text-slate-500'}`}
+        {/* Separator */}
+        <div style={{ width: 2, height: 20, background: "#808080", borderRight: "1px solid #fff", margin: "0 2px" }} />
+
+        {/* Taskbar app button */}
+        <button className="win-btn win-btn-active" style={{ fontSize: 11, padding: "2px 10px" }}>
+          📊 TacticalInsight
+        </button>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* System tray */}
+        <div
+          className="win-sunken"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "2px 8px",
+            fontSize: 11,
+          }}
+        >
+          <button
+            onClick={() => setSoundEnabled((s) => !s)}
+            title={soundEnabled ? "Som ativado" : "Som desativado"}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, padding: 0 }}
           >
-            <Volume2 className="w-5 h-5" />
+            {soundEnabled ? "🔊" : "🔇"}
           </button>
+          <span style={{ fontFamily: "Arial", fontSize: 11, color: "#000" }}>
+            {format(currentTime, "HH:mm")}
+          </span>
         </div>
-      </header>
+      </div>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        {/* Sidebar */}
-        <aside className="lg:col-span-1 space-y-6">
-          <div className="glass-panel rounded-2xl p-5 sticky top-28">
-            <div className="flex items-center gap-2 mb-4 text-slate-300">
-              <Trophy className="w-5 h-5 text-amber-500" />
-              <h2 className="font-semibold">Filtros de Clube</h2>
+      {/* ── Main Window ── */}
+      <div
+        style={{
+          margin: "12px 12px 42px 12px",
+          background: "#d4d0c8",
+          borderTop: "2px solid #ffffff",
+          borderLeft: "2px solid #ffffff",
+          borderBottom: "2px solid #808080",
+          borderRight: "2px solid #808080",
+          boxShadow: "3px 3px 8px rgba(0,0,0,0.5)",
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: "calc(100vh - 56px)",
+        }}
+      >
+        {/* Window Title Bar */}
+        <div className="win-titlebar">
+          <span style={{ fontSize: 14 }}>📊</span>
+          <span>TacticalInsight - Radar Realtime I.A. - [Monitor de Notícias]</span>
+          <div style={{ flex: 1 }} />
+          {/* Window control buttons */}
+          <button className="win-btn" style={{ padding: "0 5px", fontSize: 10, fontWeight: "bold", minWidth: 18, height: 18, lineHeight: "14px" }} title="Minimizar">_</button>
+          <button className="win-btn" style={{ padding: "0 5px", fontSize: 10, fontWeight: "bold", minWidth: 18, height: 18, lineHeight: "14px" }} title="Maximizar">□</button>
+          <button className="win-btn" style={{ padding: "0 5px", fontSize: 10, fontWeight: "bold", minWidth: 18, height: 18, lineHeight: "14px", color: "#cc0000" }} title="Fechar">✕</button>
+        </div>
+
+        {/* Menu Bar */}
+        <div
+          style={{
+            background: "#d4d0c8",
+            borderBottom: "1px solid #aca899",
+            padding: "2px 4px",
+            display: "flex",
+            gap: 2,
+            fontSize: 11,
+          }}
+        >
+          {["Arquivo", "Editar", "Exibir", "Favoritos", "Ferramentas", "Ajuda"].map((m) => (
+            <button
+              key={m}
+              style={{
+                background: "none",
+                border: "1px solid transparent",
+                padding: "2px 6px",
+                fontSize: 11,
+                cursor: "pointer",
+                color: "#000",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "#0a246a";
+                (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "none";
+                (e.currentTarget as HTMLButtonElement).style.color = "#000";
+              }}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+
+        {/* Toolbar */}
+        <div
+          style={{
+            background: "#d4d0c8",
+            borderBottom: "1px solid #aca899",
+            padding: "3px 6px",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          {/* Toolbar buttons */}
+          {[
+            { icon: "⬅", label: "Voltar" },
+            { icon: "➡", label: "Avançar" },
+            { icon: "🔄", label: "Atualizar" },
+            { icon: "🏠", label: "Início" },
+          ].map(({ icon, label }) => (
+            <button
+              key={label}
+              className="win-btn"
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", fontSize: 10, padding: "2px 6px", gap: 1, minWidth: 38 }}
+              title={label}
+            >
+              <span style={{ fontSize: 14 }}>{icon}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+          <div style={{ width: 1, height: 32, background: "#808080", borderRight: "1px solid #fff" }} />
+          {/* Address bar */}
+          <span style={{ fontSize: 11, marginLeft: 4 }}>Endereço</span>
+          <div className="win-sunken" style={{ flex: 1, display: "flex", alignItems: "center", padding: "1px 4px", background: "#fff" }}>
+            <span style={{ fontSize: 11, color: "#000080" }}>
+              🌐 http://tacticalinsight.app/monitor
+            </span>
+          </div>
+          <WinButton>Ir</WinButton>
+        </div>
+
+        {/* Scrolling marquee */}
+        <div style={{ background: "#000080", borderBottom: "1px solid #000040" }}>
+          <marquee style={{ color: "#ffff00", fontSize: 11, padding: "2px 0" }} scrollamount={3}>
+            🔴 ATENÇÃO: Monitoramento ativo em tempo real • ⚡ Notícias de futebol filtradas por I.A. •
+            🔄 Atualizações automáticas via Supabase Realtime • ✅ Todos os clubes sendo monitorados 24/7 •
+            &nbsp;&nbsp;&nbsp;
+            🔴 ATENÇÃO: Monitoramento ativo em tempo real • ⚡ Notícias de futebol filtradas por I.A.
+          </marquee>
+        </div>
+
+        {/* Main Content Area */}
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+
+          {/* ── Sidebar ── */}
+          <aside
+            style={{
+              width: 200,
+              background: "#d4d0c8",
+              borderRight: "2px solid #808080",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "auto",
+              flexShrink: 0,
+            }}
+          >
+            {/* Sidebar Title */}
+            <div
+              style={{
+                background: "#ece9d8",
+                borderBottom: "1px solid #aca899",
+                padding: "4px 6px",
+                fontSize: 11,
+                fontWeight: "bold",
+                color: "#000080",
+              }}
+            >
+              🏆 Filtros de Clube
             </div>
-            
-            <div className="space-y-1">
+
+            {/* Team list */}
+            <div style={{ padding: 4 }}>
               <button
                 onClick={() => setActiveTeam("Todos")}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex justify-between items-center ${activeTeam === "Todos" ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300 font-medium' : 'hover:bg-slate-800 text-slate-400'}`}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "3px 6px",
+                  fontSize: 11,
+                  cursor: "pointer",
+                  border: activeTeam === "Todos" ? "1px dotted #000080" : "1px solid transparent",
+                  background: activeTeam === "Todos" ? "#0a246a" : "transparent",
+                  color: activeTeam === "Todos" ? "#fff" : "#000",
+                  marginBottom: 2,
+                }}
               >
-                Visão Geral (Todos)
-                {activeTeam === "Todos" && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                📋 Visão Geral (Todos)
               </button>
-              
-              <div className="h-px bg-white/5 my-2"></div>
 
-              {TEAMS.map(team => (
+              <div style={{ height: 1, background: "#808080", borderBottom: "1px solid #fff", margin: "4px 0" }} />
+
+              <div style={{ fontSize: 10, color: "#666", padding: "2px 4px", fontWeight: "bold" }}>CLUBES</div>
+              {TEAMS.map((team) => (
                 <button
                   key={team}
                   onClick={() => setActiveTeam(team)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center justify-between ${activeTeam === team ? 'bg-slate-800 border border-slate-700 text-white font-medium' : 'hover:bg-slate-800/50 text-slate-400'}`}
+                  style={{
+                    display: "flex",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "3px 6px",
+                    fontSize: 11,
+                    cursor: "pointer",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    border: activeTeam === team ? "1px dotted #000080" : "1px solid transparent",
+                    background: activeTeam === team ? "#0a246a" : "transparent",
+                    color: activeTeam === team ? "#fff" : "#000",
+                    marginBottom: 1,
+                  }}
                 >
-                  <span className="truncate">{team}</span>
-                  {activeTeam === team && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  <span>⚽ {team}</span>
+                  {activeTeam === team && <span style={{ fontSize: 8, color: "#a6caf0" }}>◀</span>}
                 </button>
               ))}
             </div>
-          </div>
-        </aside>
 
-        {/* Feed de Notícias Reais */}
-        <section className="lg:col-span-3 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Filter className="w-5 h-5 text-slate-500" />
-              Feed Monitorado
-            </h2>
-            <div className="text-xs flex gap-2">
-               <span className="text-emerald-400 bg-emerald-900/30 border border-emerald-800 px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div> Supabase Realtime
-               </span>
-            </div>
-          </div>
-
-          <AnimatePresence>
-            {filteredNews.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="glass-panel p-10 rounded-2xl flex flex-col items-center justify-center text-slate-500 text-center border-dashed border-slate-700"
+            {/* Info panel */}
+            <div style={{ margin: 6 }}>
+              <div
+                className="win-sunken"
+                style={{
+                  padding: 6,
+                  background: "#ece9d8",
+                  fontSize: 10,
+                  color: "#333",
+                  lineHeight: 1.6,
+                }}
               >
-                <Search className="w-12 h-12 mb-3 text-slate-600" />
-                <p>Nenhuma nova informação crítica foi filtrada pela I.A. ainda.</p>
-              </motion.div>
-            ) : (
-              <div className="grid gap-4">
-                {filteredNews.map((item, idx) => (
-                  <motion.article 
-                    key={item.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    layout
-                    className="glass-panel rounded-2xl p-5 hover:border-slate-600 transition-colors relative overflow-hidden group"
-                  >
-                    <div className={`absolute top-0 left-0 w-1.5 h-full ${
-                      item.impact_type === 'lesao' ? 'bg-red-500' :
-                      item.impact_type === 'retorno' ? 'bg-emerald-500' :
-                      item.impact_type === 'escalacao' ? 'bg-blue-500' : 'bg-amber-500'
-                    }`} />
-
-                    <div className="flex justify-between items-start mb-2 pl-3">
-                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
-                        <span className={`px-2 py-1 rounded bg-slate-800 border ${
-                           item.impact_type === 'lesao' ? 'text-red-400 border-red-500/20' :
-                           item.impact_type === 'retorno' ? 'text-emerald-400 border-emerald-500/20' :
-                           item.impact_type === 'escalacao' ? 'text-blue-400 border-blue-500/20' : 'text-amber-400 border-amber-500/20'
-                        }`}>
-                          {item.impact_type}
-                        </span>
-                        <span className="text-slate-400 bg-slate-800/50 px-2 py-1 rounded border border-slate-800">
-                          {item.team}
-                        </span>
-                      </div>
-                      <time className="text-xs text-slate-500" dateTime={item.created_at}>
-                        {format(new Date(item.created_at), "HH:mm • dd MMM", { locale: ptBR })}
-                      </time>
-                    </div>
-
-                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="block hover:underline">
-                      <h3 className="text-lg font-bold text-slate-200 mt-3 mb-2 pl-3 leading-snug">
-                        {item.title}
-                      </h3>
-                    </a>
-                    
-                    <p className="text-sm text-slate-400 pl-3 leading-relaxed mb-4">
-                      {item.description}
-                    </p>
-
-                    <div className="pl-3 flex items-center justify-between border-t border-slate-800/60 pt-3 mt-2">
-                       <div className="flex items-center gap-2">
-                         <span className="text-xs font-bold text-slate-300">Fonte: {item.source}</span>
-                       </div>
-                       
-                       {item.key_player && item.key_player !== "N/A" && (
-                         <div className="flex items-center gap-1.5 text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-1 rounded-full">
-                           <CheckCircle2 className="w-3.5 h-3.5" />
-                           Atleta-Chave: <strong>{item.key_player}</strong>
-                         </div>
-                       )}
-                    </div>
-                  </motion.article>
-                ))}
+                <div style={{ fontWeight: "bold", color: "#000080", marginBottom: 2 }}>ℹ️ Status do Sistema</div>
+                <div>
+                  <span className="win-blink" style={{ color: "#006600" }}>●</span>
+                  {" "}Supabase: Online
+                </div>
+                <div>📡 Realtime: Ativo</div>
+                <div>🤖 I.A.: Monitorando</div>
               </div>
-            )}
-          </AnimatePresence>
-        </section>
-      </main>
+            </div>
+          </aside>
 
-      {/* TOAST SYSTEM COPIA */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
-        <AnimatePresence>
-          {toasts.map(toast => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, x: 50, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 20, scale: 0.9 }}
-              className="pointer-events-auto w-80 sm:w-96 glass-panel bg-slate-900 border border-slate-700/80 shadow-2xl rounded-xl overflow-hidden relative"
+          {/* ── News Feed ── */}
+          <main style={{ flex: 1, overflow: "auto", padding: 8 }}>
+
+            {/* Toolbar */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+                padding: "4px 0",
+                borderBottom: "1px solid #aca899",
+              }}
             >
-              <motion.div 
-                initial={{ width: "100%" }}
-                animate={{ width: "0%" }}
-                transition={{ duration: 6, ease: "linear" }}
-                className={`absolute bottom-0 left-0 h-1 ${
-                  toast.impact_type === 'lesao' ? 'bg-red-500' :
-                  toast.impact_type === 'retorno' ? 'bg-emerald-500' :
-                  toast.impact_type === 'escalacao' ? 'bg-blue-500' : 'bg-amber-500'
-                }`}
-              />
-              <div className="p-4 flex gap-3">
-                <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                   toast.impact_type === 'lesao' ? 'bg-red-500/20 text-red-500' :
-                   toast.impact_type === 'retorno' ? 'bg-emerald-500/20 text-emerald-500' :
-                   toast.impact_type === 'escalacao' ? 'bg-blue-500/20 text-blue-500' : 'bg-amber-500/20 text-amber-500'
-                }`}>
-                  <Bell className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Urgente • {toast.team}
-                    </span>
-                    <button 
-                      onClick={() => removeToast(toast.id)}
-                      className="text-slate-500 hover:text-white transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <h4 className="font-semibold text-sm text-balance leading-tight text-white">
-                    {toast.title}
-                  </h4>
-                </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: "bold" }}>📊 Feed Monitorado</span>
+                <span
+                  style={{
+                    background: "#ece9d8",
+                    border: "1px solid #aca899",
+                    padding: "1px 6px",
+                    fontSize: 10,
+                    color: "#555",
+                  }}
+                >
+                  {filteredNews.length} {filteredNews.length === 1 ? "item" : "itens"}
+                </span>
               </div>
-            </motion.div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span
+                  style={{
+                    background: "#ece9d8",
+                    border: "1px solid #aca899",
+                    padding: "1px 6px",
+                    fontSize: 10,
+                    color: "#006600",
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                  }}
+                >
+                  <span className="win-blink">●</span> Supabase Realtime Conectado
+                </span>
+              </div>
+            </div>
+
+            {/* News list */}
+            <AnimatePresence>
+              {filteredNews.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="win-sunken"
+                  style={{
+                    padding: 24,
+                    textAlign: "center",
+                    background: "#ece9d8",
+                    color: "#666",
+                  }}
+                >
+                  <div style={{ fontSize: 24, marginBottom: 8 }}>🔍</div>
+                  <p style={{ fontSize: 11 }}>
+                    Nenhuma informação crítica filtrada pela I.A. ainda.
+                  </p>
+                  <p style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
+                    Aguardando atualizações em tempo real...
+                  </p>
+                </motion.div>
+              ) : (
+                filteredNews.map((item) => (
+                  <NewsCard key={item.id} item={item} />
+                ))
+              )}
+            </AnimatePresence>
+          </main>
+        </div>
+
+        {/* ── Status Bar ── */}
+        <div className="win-statusbar" style={{ borderTop: "2px solid #808080" }}>
+          <div
+            className="win-sunken"
+            style={{ flex: 1, padding: "1px 4px", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            <span className="win-blink" style={{ color: "#006600", fontSize: 10 }}>●</span>
+            <span>Pronto</span>
+          </div>
+          <div className="win-sunken" style={{ padding: "1px 8px", minWidth: 120 }}>
+            🔄 Monitorando: {TEAMS.length} clubes
+          </div>
+          <div className="win-sunken" style={{ padding: "1px 8px", minWidth: 80 }}>
+            📰 {news.length} notícias
+          </div>
+          <div className="win-sunken" style={{ padding: "1px 8px" }}>
+            🌐 Internet
+          </div>
+        </div>
+      </div>
+
+      {/* ── Toast Notifications ── */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 40,
+          right: 8,
+          zIndex: 200,
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          pointerEvents: "none",
+        }}
+      >
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <div key={toast.id} style={{ pointerEvents: "all" }}>
+              <ToastNotification toast={toast} onClose={() => removeToast(toast.id)} />
+            </div>
           ))}
         </AnimatePresence>
       </div>
-
     </div>
   );
 }
