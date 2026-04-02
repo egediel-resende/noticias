@@ -124,6 +124,18 @@ export default function Home() {
 
   const filteredNews = activeTeam === "Todos" ? news : news.filter(n => n.team === activeTeam);
 
+  const formatImpact = (str: string) => {
+    if (str === 'lesao') return 'LESÃO';
+    if (str === 'escalacao') return 'ESCALAÇÃO';
+    if (str === 'retorno') return 'RETORNO';
+    if (str === 'poupados') return 'POUPADO';
+    return str.toUpperCase();
+  };
+
+  const formatTeamFile = (teamName: string) => {
+    return teamName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-blue-500/30">
       
@@ -177,7 +189,15 @@ export default function Home() {
                   onClick={() => setActiveTeam(team)}
                   className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center justify-between ${activeTeam === team ? 'bg-slate-800 border border-slate-700 text-white font-medium' : 'hover:bg-slate-800/50 text-slate-400'}`}
                 >
-                  <span className="truncate">{team}</span>
+                  <span className="truncate flex items-center gap-2">
+                    <img 
+                      src={`/escudos/${formatTeamFile(team)}.png`} 
+                      alt="" 
+                      className="w-4 h-4 object-contain"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                    {team}
+                  </span>
                   {activeTeam === team && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                 </button>
               ))}
@@ -233,10 +253,16 @@ export default function Home() {
                            item.impact_type === 'retorno' ? 'text-emerald-400 border-emerald-500/20' :
                            item.impact_type === 'escalacao' ? 'text-blue-400 border-blue-500/20' : 'text-amber-400 border-amber-500/20'
                         }`}>
-                          {item.impact_type}
+                          {formatImpact(item.impact_type)}
                         </span>
-                        <span className="text-slate-400 bg-slate-800/50 px-2 py-1 rounded border border-slate-800">
+                        <span className="text-slate-400 bg-slate-800/50 px-2 py-1 rounded border border-slate-800 flex items-center gap-1.5">
                           {item.team}
+                          <img 
+                            src={`/escudos/${formatTeamFile(item.team)}.png`} 
+                            alt={`Escudo do ${item.team}`} 
+                            className="w-4 h-4 object-contain"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
                         </span>
                       </div>
                       <time className="text-xs text-slate-500" dateTime={item.created_at}>
@@ -305,8 +331,14 @@ export default function Home() {
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-start mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Urgente • {toast.team}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      {formatImpact(toast.impact_type)} • {toast.team}
+                      <img 
+                        src={`/escudos/${formatTeamFile(toast.team)}.png`} 
+                        alt="" 
+                        className="w-3 h-3 object-contain"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
                     </span>
                     <button 
                       onClick={() => removeToast(toast.id)}
