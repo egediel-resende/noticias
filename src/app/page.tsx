@@ -18,7 +18,12 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
 
-type Team = "Flamengo" | "Manchester City" | "Barcelona" | "Real Madrid" | "Inter de Milão" | "Bayern de Munique" | "Arsenal" | "Palmeiras" | "Liverpool";
+type Team = 
+  // Brasil
+  "Palmeiras" | "Flamengo" | "Fluminense" | "Bahia" | "São Paulo" | "Athletico-PR" | "Coritiba" | "Vasco" | "Grêmio" | "Vitória" | 
+  "Corinthians" | "Botafogo" | "Internacional" | "Atlético-MG" | "RB Bragantino" | "Chapecoense" | "Santos" | "Cruzeiro" | "Mirassol" | "Remo" |
+  // Europa
+  "Real Madrid" | "Barcelona" | "Manchester City" | "Manchester United" | "Chelsea" | "Arsenal" | "Liverpool" | "Aston Villa" | "Newcastle" | "Tottenham" | "Atlético de Madrid" | "Inter de Milão" | "Bayern de Munique";
 type ImpactType = "lesao" | "escalacao" | "retorno" | "poupados";
 
 interface NewsItem {
@@ -34,11 +39,11 @@ interface NewsItem {
 }
 
 const TEAMS: Team[] = [
-  "Flamengo", "Palmeiras", // BR
-  "Manchester City", "Arsenal", "Liverpool", // EN
-  "Barcelona", "Real Madrid", // ES
-  "Inter de Milão", // IT
-  "Bayern de Munique" // DE
+  // Brasil
+  "Palmeiras", "Flamengo", "Fluminense", "Bahia", "São Paulo", "Athletico-PR", "Coritiba", "Vasco", "Grêmio", "Vitória", 
+  "Corinthians", "Botafogo", "Internacional", "Atlético-MG", "RB Bragantino", "Chapecoense", "Santos", "Cruzeiro", "Mirassol", "Remo",
+  // Europa
+  "Real Madrid", "Barcelona", "Manchester City", "Manchester United", "Chelsea", "Arsenal", "Liverpool", "Aston Villa", "Newcastle", "Tottenham", "Atlético de Madrid", "Inter de Milão", "Bayern de Munique"
 ];
 
 export default function Home() {

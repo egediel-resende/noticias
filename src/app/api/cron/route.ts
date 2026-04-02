@@ -16,7 +16,7 @@ Você é um analista tático de futebol extremamente rigoroso trabalhando para t
 Critérios de Retenção RÍGIDOS:
 - SÓ PASSA: Lesões, escalações prováveis/oficiais, cortes médicos, punições e suspensões, e jogadores que foram poupados.
 - SÓ PASSA SE FOR JOGADOR-CHAVE: Tem que ser um jogador importante com status de titular ou vital (impacto real). Nada de reservas obscuros.
-- TIMES SUPORTADOS: "Flamengo", "Palmeiras", "Manchester City", "Arsenal", "Liverpool", "Barcelona", "Real Madrid", "Inter de Milão", "Bayern de Munique".
+- TIMES SUPORTADOS: "Palmeiras", "Flamengo", "Fluminense", "Bahia", "São Paulo", "Athletico-PR", "Coritiba", "Vasco", "Grêmio", "Vitória", "Corinthians", "Botafogo", "Internacional", "Atlético-MG", "RB Bragantino", "Chapecoense", "Santos", "Cruzeiro", "Mirassol", "Remo", "Real Madrid", "Barcelona", "Manchester City", "Manchester United", "Chelsea", "Arsenal", "Liverpool", "Aston Villa", "Newcastle", "Tottenham", "Atlético de Madrid", "Inter de Milão", "Bayern de Munique".
 - IGNORAR E DESCARTAR (isValid: false): Rumores de transferências (ex: fulano em negociação), opiniões de jornalistas, críticas, renovações de contrato, polêmicas extra-campo não relacionadas a suspensões.
 
 Os tipos de impacto aceitos (impactType) são ESTRITAMENTE: "lesao", "escalacao", "retorno", "poupados".
@@ -76,10 +76,12 @@ export async function GET(req: Request) {
   
   // Fontes alvo (limitadas para não estourar a API num ping só)
   const feeds = [
-    { url: 'https://news.google.com/rss/search?q=flamengo+when:24h&hl=pt-BR&gl=BR&ceid=BR:pt-419', source: 'Google News - Flamengo' },
-    { url: 'https://news.google.com/rss/search?q=palmeiras+when:24h&hl=pt-BR&gl=BR&ceid=BR:pt-419', source: 'Google News - Palmeiras' },
-    { url: 'https://news.google.com/rss/search?q=real+madrid+when:24h&hl=pt-BR&gl=BR&ceid=BR:pt-419', source: 'Google News - Real Madrid' },
-    { url: 'https://news.google.com/rss/search?q=inter+milao+when:24h&hl=pt-BR&gl=BR&ceid=BR:pt-419', source: 'Google News - Inter de Milão' }
+    { url: 'https://news.google.com/rss/search?q=brasileirao+serie+a+lesao+previa+escalacao+when:12h&hl=pt-BR&gl=BR&ceid=BR:pt-419', source: 'Google News - Brasil' },
+    { url: 'https://news.google.com/rss/search?q=premier+league+injury+lineup+news+when:12h&hl=en-GB&gl=GB&ceid=GB:en', source: 'Google News - PL (Inglaterra)' },
+    { url: 'https://news.google.com/rss/search?q=la+liga+lesion+alineacion+noticias+when:12h&hl=es-ES&gl=ES&ceid=ES:es', source: 'Google News - La Liga (Espanha)' },
+    { url: 'https://news.google.com/rss/search?q=serie+a+italia+infortunio+formazione+when:12h&hl=it&gl=IT&ceid=IT:it', source: 'Google News - Itália' },
+    { url: 'https://news.google.com/rss/search?q=bundesliga+verletzung+aufstellung+when:12h&hl=de&gl=DE&ceid=DE:de', source: 'Google News - Alemanha' },
+    { url: 'https://news.google.com/rss/search?q=libertadores+escalacao+desfalque+when:12h&hl=pt-BR&gl=BR&ceid=BR:pt-419', source: 'Google News - Libertadores' }
   ];
 
   try {
